@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand_bg">#12111C</color>
+    <color name="brand_surface">#1C1A2B</color>
+    <color name="brand_purple">#9B7BFF</color>
+    <color name="brand_purple_dark">#7654E8</color>
+    <color name="brand_text">#F7F5FF</color>
+    <color name="brand_muted">#B8B2CB</color>
+</resources>

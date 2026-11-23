@@ -1,0 +1,26 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.mixezy.mobile'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.mixezy.mobile'
+        minSdk 24
+        targetSdk 35
+        versionCode 4
+        versionName '0.9.3'
+        buildConfigField 'String', 'DEFAULT_SERVER_URL', '"' + ((project.findProperty('MIXEZY_SERVER_URL') ?: project.findProperty('THREENHANCE_SERVER_URL') ?: '')) + '"'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

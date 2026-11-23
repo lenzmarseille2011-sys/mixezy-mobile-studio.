@@ -1,0 +1,94 @@
+name: Build Mixezy Mobile Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: "Adresse HTTPS du serveur Mixezy Mobile (laisser vide pour la saisir au premier démarrage)"
+        required: false
+        type: string
+        default: ""
+  push:
+    paths:
+      - "android/**"
+      - "tools/**"
+      - "build-apk.sh"
+      - ".github/workflows/android-apk.yml"
+  pull_request:
+    paths:
+      - "android/**"
+      - "tools/**"
+      - "build-apk.sh"
+      - ".github/workflows/android-apk.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mixezy-android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android 35 build platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.9"
+
+      - name: Validate Android project
+        run: python3 tools/validate_android_project.py
+
+      - name: Build debug APK
+        env:
+          INPUT_SERVER_URL: ${{ github.event.inputs.server_url || '' }}
+          REPO_SERVER_URL: ${{ vars.MIXEZY_SERVER_URL || '' }}
+        shell: bash
+        run: |
+          SERVER_URL="${INPUT_SERVER_URL:-${REPO_SERVER_URL:-}}"
+          if [ -n "$SERVER_URL" ]; then
+            case "$SERVER_URL" in
+              https://*) ;;
+              *) echo "MIXEZY_SERVER_URL must start with https://" >&2; exit 1 ;;
+            esac
+            gradle -p android --no-daemon -PMIXEZY_SERVER_URL="$SERVER_URL" assembleDebug
+          else
+            gradle -p android --no-daemon assembleDebug
+          fi
+
+      - name: Verify APK and create checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+          mkdir -p dist
+          cp "$APK" dist/Mixezy-Mobile-v0.9.3-debug.apk
+          cd dist
+          sha256sum Mixezy-Mobile-v0.9.3-debug.apk > Mixezy-Mobile-v0.9.3-debug.apk.sha256
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mixezy-mobile-android-debug-apk
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
